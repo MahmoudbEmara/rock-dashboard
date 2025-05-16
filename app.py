@@ -128,23 +128,30 @@ def dashboard():
 
         let barChart;
         function renderChart(totals) {
-            const labels = Array.from(new Set([].concat(...Object.values(totals).map(stats => Object.keys(stats)))));
-            const datasets = Object.entries(totals).map(([node, stats]) => {
+            const labels = ["<30mm", "30-50mm", "50-80mm", "80-150mm", ">150mm"];
+        
+            const colorsBySize = {
+                "<30mm": "rgba(54, 162, 235, 0.7)",     // blue
+                "30-50mm": "rgba(255, 99, 132, 0.7)",    // red
+                "50-80mm": "rgba(255, 206, 86, 0.7)",    // yellow
+                "80-150mm": "rgba(75, 192, 192, 0.7)",   // teal
+                ">150mm": "rgba(153, 102, 255, 0.7)"     // purple
+            };
+        
+            const datasets = labels.map(sizeLabel => {
                 return {
-                    label: node,
-                    data: labels.map(label => stats[label] || 0),
-                    backgroundColor: 'rgba(' + Math.floor(Math.random()*255) + ',' +
-                                               Math.floor(Math.random()*255) + ',' +
-                                               Math.floor(Math.random()*255) + ',0.5)'
+                    label: sizeLabel,
+                    data: Object.values(totals).map(stats => stats[sizeLabel] || 0),
+                    backgroundColor: colorsBySize[sizeLabel]
                 };
             });
-
+        
             const ctx = document.getElementById('barChart').getContext('2d');
             if (barChart) barChart.destroy();
             barChart = new Chart(ctx, {
                 type: 'bar',
                 data: {
-                    labels: labels,
+                    labels: Object.keys(totals), // Nodes (Pi names)
                     datasets: datasets
                 },
                 options: {
@@ -152,10 +159,15 @@ def dashboard():
                     plugins: {
                         legend: { position: 'top' },
                         title: { display: true, text: 'Rock Size Distribution by Node' }
+                    },
+                    scales: {
+                        x: { stacked: true },
+                        y: { stacked: true }
                     }
                 }
             });
         }
+
 
         async function updateDashboard() {
             const data = await fetchDashboardData();
