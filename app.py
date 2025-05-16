@@ -156,6 +156,7 @@ def dashboard():
                 },
                 options: {
                     responsive: true,
+                    indexAxis: 'y',
                     plugins: {
                         legend: { position: 'top' },
                         title: { display: true, text: 'Rock Size Distribution by Node' }
