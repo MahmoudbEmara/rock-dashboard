@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, render_template_string, send_file
+from flask import Flask, request, jsonify, render_template_string, send_file, redirect, session, url_for
 from datetime import datetime
 import sqlite3
 import os
@@ -8,6 +8,10 @@ app = Flask(__name__)
 
 API_KEY = os.getenv("DASHBOARD_API_KEY", "REPLACE_ME_WITH_SECRET_KEY")
 RESET_KEY = os.getenv("RESET_KEY", "REPLACE_ME_WITH_RESET_KEY")
+app.secret_key = os.getenv("FLASK_SECRET_KEY", "something_really_secret")
+USERNAME = os.getenv("LOGIN_USER", "admin")
+PASSWORD = os.getenv("LOGIN_PASS", "pass")
+
 DB_FILE = "reports.db"
 
 # --- DB SETUP ---
@@ -23,6 +27,89 @@ def init_db():
                 count INTEGER
             )
         ''')
+
+
+@app.route('/', methods=['GET', 'POST'])
+def login():
+    html = """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Limestone Monitoring Beta</title>
+        <style>
+            body {
+                background: url('https://images.unsplash.com/photo-1606228377053-9225bd1b5e13?auto=format&fit=crop&w=1350&q=80') no-repeat center center fixed;
+                background-size: cover;
+                font-family: Arial, sans-serif;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                height: 100vh;
+                margin: 0;
+            }
+            .login-box {
+                background-color: rgba(255, 255, 255, 0.85);
+                padding: 40px;
+                border-radius: 10px;
+                box-shadow: 0 0 15px rgba(0,0,0,0.2);
+                text-align: center;
+                width: 300px;
+            }
+            input[type="text"],
+            input[type="password"] {
+                width: 100%;
+                padding: 10px;
+                margin: 10px 0;
+                border: 1px solid #ccc;
+                border-radius: 5px;
+            }
+            button {
+                padding: 10px 20px;
+                background-color: #4CAF50;
+                color: white;
+                border: none;
+                border-radius: 5px;
+                cursor: pointer;
+                font-size: 16px;
+            }
+            button:hover {
+                background-color: #45a049;
+            }
+            .error {
+                color: red;
+                margin-top: 10px;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="login-box">
+            <h2>Wanna look at some rock size data buddy ? </h2>
+            <form method="post">
+                <input name="username" type="text" placeholder="Username" required><br>
+                <input name="password" type="password" placeholder="Password" required><br>
+                <button type="submit">yes I'm a nerd</button>
+            </form>
+            {% if error %}
+                <p class="error">{{ error }}</p>
+            {% endif %}
+        </div>
+    </body>
+    </html>
+    """
+
+    if request.method == 'POST':
+        if request.form['username'] == USERNAME and request.form['password'] == PASSWORD:
+            session['logged_in'] = True
+            return redirect('/dashboard')
+        else:
+            return render_template_string(html, error="Invalid credentials.")
+    return render_template_string(html)
+
+
+@app.route('/logout')
+def logout():
+    session.pop('logged_in', None)
+    return redirect('/')
 
 # --- UPDATE ENDPOINT ---
 @app.route('/update', methods=['POST'])
@@ -49,6 +136,8 @@ def update():
 # --- DASHBOARD ---
 @app.route('/dashboard')
 def dashboard():
+    if not session.get('logged_in'):
+        return redirect('/')
     html = """
     <!DOCTYPE html>
     <html>
@@ -118,8 +207,10 @@ def dashboard():
                 const stats = totals[node];
                 let html = `<h3>${node}</h3>`;
                 html += `<table><tr><th>Size Range</th><th>Total Count</th></tr>`;
-                for (const size in stats) {
-                    html += `<tr><td>${size}</td><td>${stats[size]}</td></tr>`;
+                const orderedSizes = ["<30mm", "30-50mm", "50-80mm", "80-150mm", ">150mm"];
+                for (const size of orderedSizes) {
+                    const count = stats[size] || 0;
+                    html += `<tr><td>${size}</td><td>${count}</td></tr>`;
                 }
                 html += `</table>`;
                 container.innerHTML += html;
@@ -128,8 +219,7 @@ def dashboard():
 
         let barChart;
         function renderChart(totals) {
-            const labels = ["<30mm", "30-50mm", "50-80mm", "80-150mm", ">150mm"];
-        
+            const sizeLabels = ["<30mm", "30-50mm", "50-80mm", "80-150mm", ">150mm"];
             const colorsBySize = {
                 "<30mm": "rgba(54, 162, 235, 0.7)",     // blue
                 "30-50mm": "rgba(255, 99, 132, 0.7)",    // red
@@ -138,10 +228,12 @@ def dashboard():
                 ">150mm": "rgba(153, 102, 255, 0.7)"     // purple
             };
         
-            const datasets = labels.map(sizeLabel => {
+            const nodes = Object.keys(totals);
+        
+            const datasets = sizeLabels.map(sizeLabel => {
                 return {
                     label: sizeLabel,
-                    data: Object.values(totals).map(stats => stats[sizeLabel] || 0),
+                    data: nodes.map(node => totals[node][sizeLabel] || 0),
                     backgroundColor: colorsBySize[sizeLabel]
                 };
             });
@@ -151,23 +243,23 @@ def dashboard():
             barChart = new Chart(ctx, {
                 type: 'bar',
                 data: {
-                    labels: Object.keys(totals), // Nodes (Pi names)
+                    labels: nodes,
                     datasets: datasets
                 },
                 options: {
                     responsive: true,
-                    indexAxis: 'y',
                     plugins: {
                         legend: { position: 'top' },
                         title: { display: true, text: 'Rock Size Distribution by Node' }
                     },
                     scales: {
-                        x: { stacked: true },
-                        y: { stacked: true }
+                        x: { stacked: false },
+                        y: { beginAtZero: true }
                     }
                 }
             });
         }
+
 
 
         async function updateDashboard() {
@@ -203,7 +295,7 @@ def dashboard():
         }
 
         updateDashboard();
-        setInterval(updateDashboard, 130000); // refresh every 10s
+        setInterval(updateDashboard, 200000); // refresh every 200s
         </script>
     </body>
     </html>
@@ -212,6 +304,8 @@ def dashboard():
 
 @app.route('/dashboard-data')
 def dashboard_data():
+    if not session.get('logged_in'):
+        return redirect('/')
     with sqlite3.connect(DB_FILE) as conn:
         cursor = conn.cursor()
         cursor.execute("SELECT node, size_range, SUM(count) FROM reports GROUP BY node, size_range")
@@ -233,6 +327,8 @@ def history():
         cursor = conn.cursor()
         cursor.execute("SELECT timestamp, node, status, size_range, count FROM reports ORDER BY timestamp DESC LIMIT 100")
         rows = cursor.fetchall()
+    if not session.get('logged_in'):
+        return redirect('/')
 
     html = """
     <h1>Recent Detection History</h1>
@@ -251,6 +347,8 @@ def history():
 # --- CSV EXPORT ---
 @app.route('/export')
 def export():
+    if not session.get('logged_in'):
+        return redirect('/')
     filename = "report_export.csv"
     with sqlite3.connect(DB_FILE) as conn, open(filename, "w", newline="") as csvfile:
         cursor = conn.cursor()
@@ -263,6 +361,8 @@ def export():
 
 @app.route('/reset', methods=['POST'])
 def reset():
+    if not session.get('logged_in'):
+        return redirect('/')
     auth = request.headers.get("Authorization", "")
     if auth != f"Bearer {RESET_KEY}":
         return jsonify({"error": "Unauthorized"}), 401
@@ -274,6 +374,8 @@ def reset():
 
 @app.route('/live-data')
 def live_data():
+    if not session.get('logged_in'):
+        return redirect('/')
     with sqlite3.connect(DB_FILE) as conn:
         cursor = conn.cursor()
         cursor.execute("SELECT node, size_range, SUM(count) FROM reports GROUP BY node, size_range")
