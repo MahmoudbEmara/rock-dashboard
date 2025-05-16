@@ -7,7 +7,7 @@ import csv
 app = Flask(__name__)
 
 API_KEY = os.getenv("DASHBOARD_API_KEY", "REPLACE_ME_WITH_SECRET_KEY")
-RESET_KEY = os.getenv("RESET_API_KEY", "REPLACE_ME_WITH_RESET_KEY")
+RESET_KEY = os.getenv("RESET_KEY", "REPLACE_ME_WITH_RESET_KEY")
 DB_FILE = "reports.db"
 
 # --- DB SETUP ---
