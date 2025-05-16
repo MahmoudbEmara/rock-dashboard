@@ -190,7 +190,7 @@ def dashboard():
         }
 
         updateDashboard();
-        setInterval(updateDashboard, 10000); // refresh every 10s
+        setInterval(updateDashboard, 130000); // refresh every 10s
         </script>
     </body>
     </html>
