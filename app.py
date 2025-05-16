@@ -38,7 +38,7 @@ def login():
         <title>Limestone Monitoring Beta</title>
         <style>
             body {
-                background: url('https://images.unsplash.com/photo-1606228377053-9225bd1b5e13?auto=format&fit=crop&w=1350&q=80') no-repeat center center fixed;
+                background: url('https://www.heidelbergmaterials.eg/sites/default/files/styles/header_image_large_xl/public/2023-09/vlcsnap-2023-09-07-16h41m01s195.jpg.webp?itok=kQXKGOlC') no-repeat center center fixed;
                 background-size: cover;
                 font-family: Arial, sans-serif;
                 display: flex;
@@ -142,7 +142,7 @@ def dashboard():
     <!DOCTYPE html>
     <html>
     <head>
-        <title>Limestone Detection Dashboard</title>
+        <title>Limestone Monitoring Dashboard Beta</title>
         <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
         <style>
             body {
@@ -295,7 +295,7 @@ def dashboard():
         }
 
         updateDashboard();
-        setInterval(updateDashboard, 200000); // refresh every 200s
+        setInterval(updateDashboard, 120000); // refresh every 200s
         </script>
     </body>
     </html>
