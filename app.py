@@ -250,7 +250,7 @@ def dashboard():
                     responsive: true,
                     plugins: {
                         legend: { position: 'top' },
-                        title: { display: true, text: 'Rock Size Distribution by Node' }
+                        title: { display: true, text: 'Rock Size Distribution' }
                     },
                     scales: {
                         x: { stacked: false },
