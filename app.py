@@ -202,16 +202,22 @@ def dashboard():
         function renderTables(totals) {
             const container = document.getElementById('tables');
             container.innerHTML = '';
-
+        
             for (const node in totals) {
                 const stats = totals[node];
                 let html = `<h3>${node}</h3>`;
                 html += `<table><tr><th>Size Range</th><th>Total Count</th></tr>`;
+        
                 const orderedSizes = ["<30mm", "30-50mm", "50-80mm", "80-150mm", ">150mm"];
+                let total = 0;
+        
                 for (const size of orderedSizes) {
                     const count = stats[size] || 0;
+                    total += count;
                     html += `<tr><td>${size}</td><td>${count}</td></tr>`;
                 }
+        
+                html += `<tr style="font-weight:bold;"><td>Total</td><td>${total}</td></tr>`;
                 html += `</table>`;
                 container.innerHTML += html;
             }
@@ -295,7 +301,7 @@ def dashboard():
         }
 
         updateDashboard();
-        setInterval(updateDashboard, 125000); // refresh every 200s
+        setInterval(updateDashboard, 60000); // refresh every 200s
         </script>
     </body>
     </html>
