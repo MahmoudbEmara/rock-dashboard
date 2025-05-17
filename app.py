@@ -227,11 +227,11 @@ def dashboard():
         function renderChart(totals) {
             const sizeLabels = ["<30mm", "30-50mm", "50-80mm", "80-150mm", ">150mm"];
             const colorsBySize = {
-                "<30mm": "rgba(54, 162, 235, 0.7)",     // blue
-                "30-50mm": "rgba(255, 99, 132, 0.7)",    // red
-                "50-80mm": "rgba(255, 206, 86, 0.7)",    // yellow
-                "80-150mm": "rgba(75, 192, 192, 0.7)",   // teal
-                ">150mm": "rgba(153, 102, 255, 0.7)"     // purple
+                "<30mm": "rgba(10, 250, 10, 1)",     // green
+                "30-50mm": "rgba(252, 98, 250, 1)",    // blue
+                "50-80mm": "rgba(252, 190, 10, 1)",    // yellow
+                "80-150mm": "rgba(212, 71, 20, 1)",   // orange
+                ">150mm": "rgba(200, 0, 0, 1)"     // red
             };
         
             const nodes = Object.keys(totals);
