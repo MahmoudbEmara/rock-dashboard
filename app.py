@@ -295,7 +295,7 @@ def dashboard():
         }
 
         updateDashboard();
-        setInterval(updateDashboard, 120000); // refresh every 200s
+        setInterval(updateDashboard, 125000); // refresh every 200s
         </script>
     </body>
     </html>
