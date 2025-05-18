@@ -314,8 +314,9 @@ def dashboard():
         }
 
         updateDashboard();
-        // Still polling, but smart now
-        setInterval(updateDashboard, 10000);
+        // Polling
+        setInterval(updateDashboard, 60000);  // milli-seconds
+        
         </script>
     </body>
     </html>
