@@ -103,11 +103,11 @@ def login():
     </head>
     <body>
         <div class="login-box">
-            <h2>Wanna look at some rock size data buddy ? </h2>
+            <h2>Welcome Please Enter Your Username and Password</h2>
             <form method="post">
                 <input name="username" type="text" placeholder="Username" required><br>
                 <input name="password" type="password" placeholder="Password" required><br>
-                <button type="submit">yes I'm a nerd</button>
+                <button type="submit">Login</button>
             </form>
             {% if error %}
                 <p class="error">{{ error }}</p>
@@ -216,7 +216,20 @@ def dashboard():
     </head>
     <body>
         <h1>Limestone Detection Dashboard</h1>
-        <button onclick="resetDashboard()">Reset Dashboard</button>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <button onclick="resetDashboard()">Reset Dashboard</button>
+            <a href="/logout" style="
+                position: absolute;
+                top: 20px;
+                right: 20px;
+                background-color: #555;
+                color: white;
+                padding: 8px 16px;
+                text-decoration: none;
+                border-radius: 4px;
+                font-size: 14px;
+            ">Logout</a>
+        </div>
         <div id="tables"></div>
         <canvas id="barChart" width="800" height="400"></canvas>
         <p id="last-updated" style="font-style: italic; color: #555;"></p>
