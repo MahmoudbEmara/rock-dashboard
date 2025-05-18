@@ -3,6 +3,9 @@ from datetime import datetime
 import sqlite3
 import os
 import csv
+import pytz
+
+EGYPT_TZ = pytz.timezone("Africa/Cairo")  # or replace with your local one
 
 app = Flask(__name__)
 
@@ -191,7 +194,7 @@ def dashboard():
         <button onclick="resetDashboard()">Reset Dashboard</button>
         <div id="tables"></div>
         <canvas id="barChart" width="800" height="400"></canvas>
-        <p id="last-updated" style="font-style: italic; color: #555;"></p>
+        <p id="last-updated (GMT+3 Cairo)" style="font-style: italic; color: #555;"></p>
         <p><a href="/history">View Full History</a> | <a href="/export">Export CSV</a></p>
 
         <script>
@@ -333,8 +336,13 @@ def dashboard_data():
         rows = cursor.fetchall()
 
         cursor.execute("SELECT MAX(timestamp) FROM reports")
-        last_updated = cursor.fetchone()[0] or datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
+        raw_ts = cursor.fetchone()[0]
+        if raw_ts:
+            dt = datetime.strptime(raw_ts, "%Y-%m-%d %H:%M:%S").replace(tzinfo=pytz.UTC).astimezone(EGYPT_TZ)
+            last_updated = dt.strftime("%Y-%m-%d %H:%M:%S")
+        else:
+            last_updated = datetime.now(EGYPT_TZ).strftime("%Y-%m-%d %H:%M:%S")
+            
     totals = {}
     for node, size, count in rows:
         if node not in totals:
