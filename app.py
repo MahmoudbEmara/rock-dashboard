@@ -171,6 +171,7 @@ def dashboard():
     <head>
         <title>Limestone Monitoring Dashboard Beta</title>
         <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
         <style>
             body {
                 font-family: Arial, sans-serif;
@@ -252,18 +253,19 @@ def dashboard():
         }
 
         let barChart;
+        Chart.register(ChartDataLabels);
+        
         function renderChart(totals) {
             const sizeLabels = ["<30mm", "30-50mm", "50-80mm", "80-150mm", ">150mm"];
             const colorsBySize = {
-                "<30mm": "rgba(10, 250, 10, 1)",     // green
-                "30-50mm": "rgba(252, 98, 250, 1)",    // blue
-                "50-80mm": "rgba(252, 190, 10, 1)",    // yellow
-                "80-150mm": "rgba(212, 71, 20, 1)",   // orange
-                ">150mm": "rgba(200, 0, 0, 1)"     // red
+                "<30mm": "rgba(10, 250, 10, 1)",
+                "30-50mm": "rgba(252, 98, 250, 1)",
+                "50-80mm": "rgba(252, 190, 10, 1)",
+                "80-150mm": "rgba(212, 71, 20, 1)",
+                ">150mm": "rgba(200, 0, 0, 1)"
             };
         
             const nodes = Object.keys(totals);
-        
             const datasets = sizeLabels.map(sizeLabel => {
                 return {
                     label: sizeLabel,
@@ -274,6 +276,7 @@ def dashboard():
         
             const ctx = document.getElementById('barChart').getContext('2d');
             if (barChart) barChart.destroy();
+        
             barChart = new Chart(ctx, {
                 type: 'bar',
                 data: {
@@ -284,15 +287,42 @@ def dashboard():
                     responsive: true,
                     plugins: {
                         legend: { position: 'top' },
-                        title: { display: true, text: 'Rock Size Distribution' }
+                        title: { display: true, text: 'Rock Size Distribution' },
+                        tooltip: {
+                            callbacks: {
+                                label: function (context) {
+                                    const total = context.chart.data.datasets
+                                        .map(ds => ds.data[context.dataIndex])
+                                        .reduce((a, b) => a + b, 0);
+                                    const val = context.parsed.y;
+                                    const percent = total ? ((val / total) * 100).toFixed(1) : 0;
+                                    return `${context.dataset.label}: ${val} (${percent}%)`;
+                                }
+                            }
+                        },
+                        datalabels: {
+                            anchor: 'end',
+                            align: 'top',
+                            formatter: function (value, ctx) {
+                                const total = ctx.chart.data.datasets
+                                    .map(ds => ds.data[ctx.dataIndex])
+                                    .reduce((a, b) => a + b, 0);
+                                const percent = total ? (value / total) * 100 : 0;
+                                return percent > 0 ? `${percent.toFixed(1)}%` : '';
+                            },
+                            color: '#000',
+                            font: { weight: 'bold' }
+                        }
                     },
                     scales: {
                         x: { stacked: false },
                         y: { beginAtZero: true }
                     }
-                }
+                },
+                plugins: [ChartDataLabels]
             });
         }
+
 
 
         let lastKnownUpdate = null;
