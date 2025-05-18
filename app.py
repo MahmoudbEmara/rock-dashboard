@@ -194,7 +194,7 @@ def dashboard():
         <button onclick="resetDashboard()">Reset Dashboard</button>
         <div id="tables"></div>
         <canvas id="barChart" width="800" height="400"></canvas>
-        <p id="last-updated (GMT+3 Cairo)" style="font-style: italic; color: #555;"></p>
+        document.getElementById("last-updated").innerText = `Last updated: ${dt.toLocaleString()}`;
         <p><a href="/history">View Full History</a> | <a href="/export">Export CSV</a></p>
 
         <script>
@@ -363,12 +363,18 @@ def dashboard_data():
 # --- HISTORY VIEW ---
 @app.route('/history')
 def history():
+    if not session.get('logged_in'):
+        return redirect('/')
     with sqlite3.connect(DB_FILE) as conn:
         cursor = conn.cursor()
         cursor.execute("SELECT timestamp, node, status, size_range, count FROM reports ORDER BY timestamp DESC LIMIT 100")
-        rows = cursor.fetchall()
-    if not session.get('logged_in'):
-        return redirect('/')
+        raw_rows = cursor.fetchall()
+
+    rows = []
+    for ts, node, status, size, count in raw_rows:
+        dt = datetime.strptime(ts, "%Y-%m-%d %H:%M:%S").replace(tzinfo=pytz.UTC).astimezone(EGYPT_TZ)
+        local_ts = dt.strftime("%Y-%m-%d %H:%M:%S")
+        rows.append((local_ts, node, status, size, count))
 
     html = """
     <h1>Recent Detection History</h1>
