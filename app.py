@@ -194,7 +194,7 @@ def dashboard():
         <button onclick="resetDashboard()">Reset Dashboard</button>
         <div id="tables"></div>
         <canvas id="barChart" width="800" height="400"></canvas>
-        document.getElementById("last-updated").innerText = `Last updated: ${dt.toLocaleString()}`;
+        <p id="last-updated" style="font-style: italic; color: #555;"></p>
         <p><a href="/history">View Full History</a> | <a href="/export">Export CSV</a></p>
 
         <script>
