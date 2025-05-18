@@ -285,7 +285,8 @@ def dashboard():
                 lastKnownUpdate = data.last_updated;
                 renderTables(data.totals);
                 renderChart(data.totals);
-                document.getElementById("last-updated").innerText = `Last updated: ${data.last_updated}`;
+                let dt = new Date(data.last_updated);
+                document.getElementById("last-updated").innerText = `Last updated: ${dt.toLocaleString()}`;
                 console.log("Dashboard updated.");
             } else {
                 console.log("⏸ No new data.");
@@ -328,6 +329,7 @@ def dashboard():
     """
     return render_template_string(html)
 
+
 @app.route('/dashboard-data')
 def dashboard_data():
     with sqlite3.connect(DB_FILE) as conn:
@@ -337,12 +339,15 @@ def dashboard_data():
 
         cursor.execute("SELECT MAX(timestamp) FROM reports")
         raw_ts = cursor.fetchone()[0]
+
         if raw_ts:
-            dt = datetime.strptime(raw_ts, "%Y-%m-%d %H:%M:%S").replace(tzinfo=pytz.UTC).astimezone(EGYPT_TZ)
-            last_updated = dt.strftime("%Y-%m-%d %H:%M:%S")
+            dt = datetime.strptime(raw_ts, "%Y-%m-%d %H:%M:%S")
         else:
-            last_updated = datetime.now(EGYPT_TZ).strftime("%Y-%m-%d %H:%M:%S")
-            
+            dt = datetime.utcnow()
+
+        # Convert to ISO format with 'T' for Safari compliance
+        last_updated = dt.isoformat()
+
     totals = {}
     for node, size, count in rows:
         if node not in totals:
