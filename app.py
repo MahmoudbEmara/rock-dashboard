@@ -267,11 +267,24 @@ def dashboard():
         }
 
 
-
+        let lastKnownUpdate = null;
+        
+        async function fetchDashboardData() {
+            const res = await fetch('/dashboard-data');
+            return await res.json();
+        }
+        
         async function updateDashboard() {
             const data = await fetchDashboardData();
-            renderTables(data);
-            renderChart(data);
+        
+            if (data.last_updated !== lastKnownUpdate) {
+                lastKnownUpdate = data.last_updated;
+                renderTables(data.totals);
+                renderChart(data.totals);
+                console.log("🔄 Dashboard updated.");
+            } else {
+                console.log("⏸ No new data.");
+            }
         }
 
         async function resetDashboard() {
@@ -301,7 +314,8 @@ def dashboard():
         }
 
         updateDashboard();
-        setInterval(updateDashboard, 60000); // refresh every 200s
+        // Still polling, but smart now
+        setInterval(updateDashboard, 10000);
         </script>
     </body>
     </html>
@@ -310,12 +324,13 @@ def dashboard():
 
 @app.route('/dashboard-data')
 def dashboard_data():
-    if not session.get('logged_in'):
-        return redirect('/')
     with sqlite3.connect(DB_FILE) as conn:
         cursor = conn.cursor()
         cursor.execute("SELECT node, size_range, SUM(count) FROM reports GROUP BY node, size_range")
         rows = cursor.fetchall()
+
+        cursor.execute("SELECT MAX(timestamp) FROM reports")
+        last_updated = cursor.fetchone()[0] or datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     totals = {}
     for node, size, count in rows:
@@ -323,7 +338,10 @@ def dashboard_data():
             totals[node] = {}
         totals[node][size] = count
 
-    return jsonify(totals)
+    return jsonify({
+        "totals": totals,
+        "last_updated": last_updated
+    })
 
 
 # --- HISTORY VIEW ---
