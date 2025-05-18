@@ -30,6 +30,23 @@ def init_db():
                 count INTEGER
             )
         ''')
+    with sqlite3.connect(DB_FILE) as conn:
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS reports (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                node TEXT,
+                status TEXT,
+                timestamp TEXT,
+                size_range TEXT,
+                count INTEGER
+            )
+        ''')
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS meta (
+                key TEXT PRIMARY KEY,
+                value TEXT
+            )
+        ''')
 
 
 @app.route('/', methods=['GET', 'POST'])
@@ -125,14 +142,21 @@ def update():
     node = data.get("node", "unknown-node")
     status = data.get("status", "unknown")
     rock_stats = data.get("rock_stats", {})
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    
     with sqlite3.connect(DB_FILE) as conn:
         for size_range, count in rock_stats.items():
             conn.execute(
                 "INSERT INTO reports (node, status, timestamp, size_range, count) VALUES (?, ?, ?, ?, ?)",
                 (node, status, timestamp, size_range, count)
             )
+        # update the meta table with latest update time
+        conn.execute(
+            "INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)",
+            ("last_update", timestamp)
+        )
+
 
     return jsonify({"message": "Data saved."}), 200
 
@@ -337,16 +361,13 @@ def dashboard_data():
         cursor.execute("SELECT node, size_range, SUM(count) FROM reports GROUP BY node, size_range")
         rows = cursor.fetchall()
 
-        cursor.execute("SELECT MAX(timestamp) FROM reports")
-        raw_ts = cursor.fetchone()[0]
-
-        if raw_ts:
-            dt = datetime.strptime(raw_ts, "%Y-%m-%d %H:%M:%S")
+        cursor.execute("SELECT value FROM meta WHERE key='last_update'")
+        row = cursor.fetchone()
+        if row:
+            dt = datetime.strptime(row[0], "%Y-%m-%d %H:%M:%S").replace(tzinfo=pytz.UTC).astimezone(EGYPT_TZ)
+            last_updated = dt.isoformat()
         else:
-            dt = datetime.utcnow()
-
-        # Convert to ISO format with 'T' for Safari compliance
-        last_updated = dt.isoformat()
+            last_updated = None
 
     totals = {}
     for node, size, count in rows:
