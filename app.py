@@ -191,6 +191,7 @@ def dashboard():
         <button onclick="resetDashboard()">Reset Dashboard</button>
         <div id="tables"></div>
         <canvas id="barChart" width="800" height="400"></canvas>
+        <p id="last-updated" style="font-style: italic; color: #555;"></p>
         <p><a href="/history">View Full History</a> | <a href="/export">Export CSV</a></p>
 
         <script>
@@ -281,7 +282,8 @@ def dashboard():
                 lastKnownUpdate = data.last_updated;
                 renderTables(data.totals);
                 renderChart(data.totals);
-                console.log("🔄 Dashboard updated.");
+                document.getElementById("last-updated").innerText = `Last updated: ${data.last_updated}`;
+                console.log("Dashboard updated.");
             } else {
                 console.log("⏸ No new data.");
             }
