@@ -103,7 +103,7 @@ def login():
     </head>
     <body>
         <div class="login-box">
-            <h2>Welcome Please Enter Your Username and Password</h2>
+            <h2>Welcome, Please Enter The Provided Username and Password</h2>
             <form method="post">
                 <input name="username" type="text" placeholder="Username" required><br>
                 <input name="password" type="password" placeholder="Password" required><br>
