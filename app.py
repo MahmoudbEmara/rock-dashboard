@@ -271,7 +271,7 @@ def dashboard():
         function renderChart(totals) {
             const sizeLabels = ["<30mm", "30-50mm", "50-80mm", "80-150mm", ">150mm"];
             const colorsBySize = {
-                "<30mm": "rgba(10, 250, 10, 1)",
+                "<30mm": "rgba(15, 250, 15, 1)",
                 "30-50mm": "rgba(252, 98, 250, 1)",
                 "50-80mm": "rgba(252, 190, 10, 1)",
                 "80-150mm": "rgba(212, 71, 20, 1)",
