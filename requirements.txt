@@ -1,3 +1,6 @@
 Flask
 gunicorn
 pytz
+collections
+psycopg2
+datetime
