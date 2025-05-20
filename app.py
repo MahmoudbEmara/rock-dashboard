@@ -39,7 +39,7 @@ def init_db():
     with get_db_conn() as conn:
         with conn.cursor() as cur:
             cur.execute('''
-                CREATE TABLE IF NOT EXISTS RealData (
+                CREATE TABLE IF NOT EXISTS realdata (
                     id SERIAL PRIMARY KEY,
                     node TEXT,
                     status TEXT,
@@ -180,7 +180,7 @@ def update():
             with conn.cursor() as cur:
                 for size_range, count in rock_stats.items():
                     cur.execute(
-                        "INSERT INTO RealData (node, status, timestamp, size_range, count) VALUES (%s, %s, %s, %s, %s)",
+                        "INSERT INTO realdata (node, status, timestamp, size_range, count) VALUES (%s, %s, %s, %s, %s)",
                         (node, status, timestamp, size_range, count)
                     )
                 cur.execute("INSERT INTO meta (key, value) VALUES (%s, %s) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value",
@@ -424,7 +424,7 @@ def dashboard():
 def dashboard_data():
     with get_db_conn() as conn:
         with conn.cursor() as cursor:
-            cursor.execute("SELECT node, size_range, SUM(count) FROM RealData GROUP BY node, size_range")
+            cursor.execute("SELECT node, size_range, SUM(count) FROM realdata GROUP BY node, size_range")
             rows = cursor.fetchall()
 
             cursor.execute("SELECT value FROM meta WHERE key='last_update'")
@@ -455,7 +455,7 @@ def reset():
 
     with get_db_conn() as conn:
         with conn.cursor() as cur:
-            cur.execute("DELETE FROM RealData")
+            cur.execute("DELETE FROM realdata")
             cur.execute("DELETE FROM meta WHERE key = 'last_update'")
             conn.commit()
 
@@ -663,7 +663,7 @@ def api_daily_trend():
                 DATE_TRUNC('minute', timestamp AT TIME ZONE 'UTC') AS minute,
                 size_range,
                 SUM(count) AS total
-            FROM RealData
+            FROM realdata
             WHERE timestamp >= %s AND timestamp < %s
             GROUP BY minute, size_range
             ORDER BY minute;
@@ -855,7 +855,7 @@ def api_history():
                     DATE(timestamp AT TIME ZONE 'Africa/Cairo') as day,
                     size_range,
                     SUM(count) as total_count
-                FROM RealData
+                FROM realdata
                 WHERE DATE(timestamp AT TIME ZONE 'Africa/Cairo') >= %s
                 GROUP BY day, size_range
                 ORDER BY day;
