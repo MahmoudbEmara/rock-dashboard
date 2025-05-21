@@ -480,7 +480,12 @@ def dashboard():
             });
         }
         
+        function resetDashboard() {
+            fetchDashboardData();
+        }
+        
         window.onload = () => {
+            fetchDashboardData();
             pollAndUpdate('/dashboard-data', 'dashboard', updateDashboardUI, 15000);
         };
         </script>
