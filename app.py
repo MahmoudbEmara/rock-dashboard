@@ -6,7 +6,7 @@ import pytz
 from dateutil import parser
 from urllib.parse import urlparse
 from collections import defaultdict
-from gevent.queue import Queue
+from gevent.queue import Queue, Empty
 import re
 
 app = Flask(__name__)
@@ -147,8 +147,7 @@ def stream():
                 try:
                     data = q.get(timeout=15)
                     yield f"data: {data}\n\n"
-                except gevent.queue.Empty:
-                    # Keep connection alive
+                except Empty:
                     yield "data: ping\n\n"
         except GeneratorExit:
             subscribers.remove(q)
