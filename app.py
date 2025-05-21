@@ -429,7 +429,7 @@ def dashboard():
              
             window.onload = () => {
                 fetchDashboardData();  // initial load
-                pollAndUpdate("/dashboard-data", updateDashboardUIIfChanged, 15000);
+                pollAndUpdate("/dashboard-data", updateDashboardUIIfChanged, 60000);
             };
         </script>
     </body>
@@ -570,16 +570,28 @@ def dailytrend():
 
         <script>
           let dailyChartInstance = null;
+          let previousTrendDataJSON = null;
         
+          // Fetch trend data from API
           async function fetchTrendData() {
             const res = await fetch('/api/daily-trend');
             return await res.json();
           }
         
+          // Check if data changed
+          function isDataChanged(newData) {
+            const newJSON = JSON.stringify(newData);
+            if (newJSON === previousTrendDataJSON) {
+              return false;
+            }
+            previousTrendDataJSON = newJSON;
+            return true;
+          }
+        
+          // Render chart
           function renderChart(data) {
             const ctx = document.getElementById('dailyChart').getContext('2d');
         
-            // Destroy existing chart instance if it exists
             if (dailyChartInstance) {
               dailyChartInstance.destroy();
             }
@@ -603,9 +615,7 @@ def dailytrend():
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
-                  legend: {
-                    position: 'top'
-                  },
+                  legend: { position: 'top' },
                   title: {
                     display: true,
                     text: 'Category Percentages Over Time'
@@ -615,45 +625,52 @@ def dailytrend():
                   y: {
                     beginAtZero: true,
                     max: 100,
-                    title: {
-                      display: true,
-                      text: '% of Total Count'
-                    }
+                    title: { display: true, text: '% of Total Count' }
                   },
                   x: {
-                    title: {
-                      display: true,
-                      text: 'Time (hh:mm)'
-                    }
+                    title: { display: true, text: 'Time (hh:mm)' }
                   }
                 }
               }
             });
           }
         
-          async function updateChart(updateTimestamp = false) {
-            console.log("Fetching trend data...");
-            const data = await fetchTrendData();
-            renderChart(data);
+          // Update UI only if data has changed
+          function updateTrendUIIfChanged(data) {
+            if (isDataChanged(data)) {
+              renderChart(data);
         
-            if (updateTimestamp && data.last_updated) {
-              const dt = new Date(data.last_updated);
-              document.getElementById("last-updated").innerText = `Last updated: ${dt.toLocaleTimeString()}`;
+              if (data.last_updated) {
+                const dt = new Date(data.last_updated);
+                document.getElementById("last-updated").innerText = `Last updated: ${dt.toLocaleTimeString()}`;
+              }
+            } else {
+              console.log("No trend data change detected.");
             }
           }
         
-          // Initial chart load
-          updateChart(false);
-        
-          // SSE updates
-          const source = new EventSource("/stream");
-          source.onmessage = function (event) {
-            if (event.data === "update") {
-              console.log("New update received from server (daily trend). Refreshing chart.");
-              updateChart(true);
+          // Polling function
+          function pollAndUpdate(url, updateFn, intervalMs) {
+            async function poll() {
+              try {
+                const res = await fetch(url);
+                const data = await res.json();
+                updateFn(data);
+              } catch (err) {
+                console.error("Polling error:", err);
+              }
+              setTimeout(poll, intervalMs);
             }
+            poll();
+          }
+        
+          // Initial load + polling setup
+          window.onload = () => {
+            fetchTrendData().then(data => updateTrendUIIfChanged(data));
+            pollAndUpdate('/api/daily-trend', updateTrendUIIfChanged, 60000);
           };
         </script>
+
     </body>
     </html>
     """
