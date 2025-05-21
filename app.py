@@ -667,7 +667,7 @@ def dailytrend():
           // Initial load + polling setup
           window.onload = () => {
             fetchTrendData().then(data => updateTrendUIIfChanged(data));
-            pollAndUpdate('/api/daily-trend', updateTrendUIIfChanged, 15000);
+            pollAndUpdate('/api/daily-trend', updateTrendUIIfChanged(data), 15000);
           };
         </script>
 
