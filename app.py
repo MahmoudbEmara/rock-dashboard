@@ -292,20 +292,29 @@ def dashboard():
             <p id="last-updated" style="font-style: italic; color: #555;"></p>
         </div>
         <script>
-        // Colors per size category for bars
-        const categoryColors = {
-            "<30mm": "#4CAF50",
-            "30-50mm": "#2196F3",
-            "50-80mm": "#FF9800",
-            "80-150mm": "#9C27B0",
-            ">150mm": "#F44336"
-        };
+            // Colors per size category for bars
+            const categoryColors = {
+                "<30mm": "#4CAF50",
+                "30-50mm": "#2196F3",
+                "50-80mm": "#FF9800",
+                "80-150mm": "#9C27B0",
+                ">150mm": "#F44336"
+            };
         
-        async function fetchDashboardData() {
-            try {
-                const res = await fetch("/dashboard-data");
-                const data = await res.json();
+            // Fetch data once and update UI
+            async function fetchDashboardData() {
+                try {
+                    const res = await fetch("/dashboard-data");
+                    const data = await res.json();
+                    updateDashboardUI(data);
+                } catch (error) {
+                    console.error("Failed to load dashboard data", error);
+                    document.getElementById("tables").innerHTML = "<p style='color: red;'>Error loading data.</p>";
+                }
+            }
         
+            // Update the tables and chart with data
+            function updateDashboardUI(data) {
                 const totals = data.totals || {};
                 const lastUpdated = data.last_updated || "Never";
         
@@ -314,10 +323,9 @@ def dashboard():
                 const tablesContainer = document.getElementById("tables");
                 tablesContainer.innerHTML = "";
         
-                const labels = Object.keys(totals);  // Node names as labels (x-axis)
+                const labels = Object.keys(totals);
                 const sizeCategories = ["<30mm", "30-50mm", "50-80mm", "80-150mm", ">150mm"];
         
-                // Create tables as before (optional)
                 for (const node of labels) {
                     const nodeData = totals[node];
                     const table = document.createElement("table");
@@ -329,23 +337,19 @@ def dashboard():
                         total += count;
                         return `<tr><td>${size}</td><td>${count}</td></tr>`;
                     }).join("");
-                    
-                    // Add total row
+        
                     rows += `<tr><td><strong>Total</strong> <small>(since 21/May/2025)</small></td><td><strong>${total}</strong></td></tr>`;
-
         
                     table.innerHTML = header + rows;
                     tablesContainer.appendChild(table);
                 }
         
-                // Build datasets per size category
-                const datasets = sizeCategories.map(category => {
-                    return {
-                        label: category,
-                        data: labels.map(node => totals[node][category] || 0),
-                        backgroundColor: categoryColors[category],
-                    };
-                });
+                // Update the chart
+                const datasets = sizeCategories.map(category => ({
+                    label: category,
+                    data: labels.map(node => totals[node][category] || 0),
+                    backgroundColor: categoryColors[category],
+                }));
         
                 const ctx = document.getElementById("barChart").getContext("2d");
                 if (window.barChartInstance) {
@@ -355,7 +359,7 @@ def dashboard():
                 window.barChartInstance = new Chart(ctx, {
                     type: 'bar',
                     data: {
-                        labels: labels,  // nodes on x-axis
+                        labels: labels,
                         datasets: datasets
                     },
                     options: {
@@ -368,17 +372,12 @@ def dashboard():
                                 formatter: function (value, context) {
                                     const nodeIndex = context.dataIndex;
                                     const allDatasets = context.chart.data.datasets;
-                                    
-                                    // Sum all categories' values for the current node
                                     let nodeTotal = 0;
                                     for (let i = 0; i < allDatasets.length; i++) {
                                         nodeTotal += allDatasets[i].data[nodeIndex] || 0;
                                     }
-                                
                                     if (nodeTotal === 0) return "0%";
-                                
-                                    const percent = (value / nodeTotal * 100).toFixed(1);
-                                    return `${percent}%`;
+                                    return `${(value / nodeTotal * 100).toFixed(1)}%`;
                                 },
                                 font: { weight: 'bold' },
                                 color: '#000'
@@ -390,105 +389,34 @@ def dashboard():
                     },
                     plugins: [ChartDataLabels]
                 });
-        
-            } catch (error) {
-                console.error("Failed to load dashboard data", error);
-                document.getElementById("tables").innerHTML = "<p style='color: red;'>Error loading data.</p>";
-            }
-        }
-        
-        function resetDashboard() {
-            fetchDashboardData();
-        }
-
-        function updateDashboardUI(data) {
-            const totals = data.totals || {};
-            const lastUpdated = data.last_updated || "Never";
-        
-            document.getElementById("last-updated").textContent = `Last updated: ${new Date(lastUpdated).toLocaleString()}`;
-        
-            const tablesContainer = document.getElementById("tables");
-            tablesContainer.innerHTML = "";
-        
-            const labels = Object.keys(totals);
-            const sizeCategories = ["<30mm", "30-50mm", "50-80mm", "80-150mm", ">150mm"];
-        
-            for (const node of labels) {
-                const nodeData = totals[node];
-                const table = document.createElement("table");
-        
-                let header = `<tr><th colspan="2">Node: ${node}</th></tr><tr><th>Size Range</th><th>Count</th></tr>`;
-                let total = 0;
-                let rows = sizeCategories.map(size => {
-                    const count = nodeData[size] || 0;
-                    total += count;
-                    return `<tr><td>${size}</td><td>${count}</td></tr>`;
-                }).join("");
-        
-                rows += `<tr><td><strong>Total</strong> <small>(since 21/May/2025)</small></td><td><strong>${total}</strong></td></tr>`;
-        
-                table.innerHTML = header + rows;
-                tablesContainer.appendChild(table);
             }
         
-            // Update chart
-            const datasets = sizeCategories.map(category => {
-                return {
-                    label: category,
-                    data: labels.map(node => totals[node][category] || 0),
-                    backgroundColor: categoryColors[category],
-                };
-            });
-        
-            const ctx = document.getElementById("barChart").getContext("2d");
-            if (window.barChartInstance) {
-                window.barChartInstance.destroy();
-            }
-        
-            window.barChartInstance = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: labels,
-                    datasets: datasets
-                },
-                options: {
-                    responsive: true,
-                    plugins: {
-                        legend: { position: 'top' },
-                        datalabels: {
-                            anchor: 'end',
-                            align: 'top',
-                            formatter: function (value, context) {
-                                const nodeIndex = context.dataIndex;
-                                const allDatasets = context.chart.data.datasets;
-                                let nodeTotal = 0;
-                                for (let i = 0; i < allDatasets.length; i++) {
-                                    nodeTotal += allDatasets[i].data[nodeIndex] || 0;
-                                }
-                                if (nodeTotal === 0) return "0%";
-                                return `${(value / nodeTotal * 100).toFixed(1)}%`;
-                            },
-                            font: { weight: 'bold' },
-                            color: '#000'
-                        }
-                    },
-                    scales: {
-                        y: { beginAtZero: true }
+            // Polling function: fetch data every interval ms, then update UI
+            function pollAndUpdate(url, updateFn, intervalMs) {
+                async function poll() {
+                    try {
+                        const response = await fetch(url);
+                        const data = await response.json();
+                        updateFn(data);
+                    } catch (error) {
+                        console.error("Polling error:", error);
                     }
-                },
-                plugins: [ChartDataLabels]
-            });
-        }
+                    setTimeout(poll, intervalMs);
+                }
+                poll();
+            }
         
-        function resetDashboard() {
-            fetchDashboardData();
-        }
+            // Reset button handler to manually refresh dashboard
+            function resetDashboard() {
+                fetchDashboardData();
+            }
         
-        window.onload = () => {
-            fetchDashboardData();
-            pollAndUpdate('/dashboard-data', 'dashboard', updateDashboardUI, 15000);
-        };
+            window.onload = () => {
+                fetchDashboardData();  // Initial load
+                pollAndUpdate("/dashboard-data", updateDashboardUI, 15000);  // Poll every 15 seconds
+            };
         </script>
+
     </body>
     </html>
     """
