@@ -143,8 +143,12 @@ def stream():
         subscribers.append(q)
         try:
             while True:
-                data = q.get()
-                yield f"data: {data}\n\n"
+                try:
+                    data = q.get(timeout=15)
+                    yield f"data: {data}\n\n"
+                except queue.Empty:
+                    # Keep connection alive
+                    yield "data: ping\n\n"
         except GeneratorExit:
             subscribers.remove(q)
 
