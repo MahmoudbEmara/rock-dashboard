@@ -681,9 +681,18 @@ def dailytrend():
 
 @app.route('/api/daily-trend')
 def api_daily_trend():
-    now_precise = datetime.now(timezone.utc)
-    end_time = now_precise
-    start_time = end_time - timedelta(hours=24)
+    
+    with get_db_conn() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT value FROM meta WHERE key='last_update'")
+        row = cursor.fetchone()
+        if row:
+            dt = parser.isoparse(row[0])
+            end_time = dt
+        else:
+            end_time = datetime.now(timezone.utc)
+    
+        start_time = end_time - timedelta(hours=24)
 
     categories = ['<30mm', '30-50mm', '50-80mm', '80-150mm', '>150mm']
     color_map = {
@@ -737,15 +746,14 @@ def api_daily_trend():
 
     data_hash = hashlib.md5(json.dumps(data_payload, sort_keys=True).encode()).hexdigest()
 
-    # Use application context to store persistent values
     if not hasattr(current_app, 'last_trend_hash'):
         current_app.last_trend_hash = None
-        current_app.last_trend_updated = now_precise.isoformat()
+        current_app.last_trend_updated = end_time.isoformat()
 
     # Only update timestamp if data hash changed
     if data_hash != current_app.last_trend_hash:
         current_app.last_trend_hash = data_hash
-        current_app.last_trend_updated = now_precise.isoformat()
+        current_app.last_trend_updated = end_time.isoformat()
 
     return jsonify({
         **data_payload,
