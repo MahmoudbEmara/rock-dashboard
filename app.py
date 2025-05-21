@@ -6,7 +6,6 @@ import pytz
 from dateutil import parser
 from urllib.parse import urlparse
 from collections import defaultdict
-from gevent.queue import Queue, Empty
 import re
 
 app = Flask(__name__)
@@ -136,23 +135,6 @@ def login():
             return render_template_string(html, error="Invalid credentials.")
     return render_template_string(html)
 
-
-@app.route('/stream')
-def stream():
-    def event_stream():
-        q = Queue()
-        subscribers.append(q)
-        try:
-            while True:
-                try:
-                    data = q.get(timeout=15)
-                    yield f"data: {data}\n\n"
-                except Empty:
-                    yield "data: ping\n\n"
-        except GeneratorExit:
-            subscribers.remove(q)
-
-    return Response(event_stream(), content_type='text/event-stream')
 
 @app.route('/logout')
 def logout():
@@ -418,17 +400,88 @@ def dashboard():
         function resetDashboard() {
             fetchDashboardData();
         }
+
+        function updateDashboardUI(data) {
+            const totals = data.totals || {};
+            const lastUpdated = data.last_updated || "Never";
+        
+            document.getElementById("last-updated").textContent = `Last updated: ${new Date(lastUpdated).toLocaleString()}`;
+        
+            const tablesContainer = document.getElementById("tables");
+            tablesContainer.innerHTML = "";
+        
+            const labels = Object.keys(totals);
+            const sizeCategories = ["<30mm", "30-50mm", "50-80mm", "80-150mm", ">150mm"];
+        
+            for (const node of labels) {
+                const nodeData = totals[node];
+                const table = document.createElement("table");
+        
+                let header = `<tr><th colspan="2">Node: ${node}</th></tr><tr><th>Size Range</th><th>Count</th></tr>`;
+                let total = 0;
+                let rows = sizeCategories.map(size => {
+                    const count = nodeData[size] || 0;
+                    total += count;
+                    return `<tr><td>${size}</td><td>${count}</td></tr>`;
+                }).join("");
+        
+                rows += `<tr><td><strong>Total</strong> <small>(since 21/May/2025)</small></td><td><strong>${total}</strong></td></tr>`;
+        
+                table.innerHTML = header + rows;
+                tablesContainer.appendChild(table);
+            }
+        
+            // Update chart
+            const datasets = sizeCategories.map(category => {
+                return {
+                    label: category,
+                    data: labels.map(node => totals[node][category] || 0),
+                    backgroundColor: categoryColors[category],
+                };
+            });
+        
+            const ctx = document.getElementById("barChart").getContext("2d");
+            if (window.barChartInstance) {
+                window.barChartInstance.destroy();
+            }
+        
+            window.barChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { position: 'top' },
+                        datalabels: {
+                            anchor: 'end',
+                            align: 'top',
+                            formatter: function (value, context) {
+                                const nodeIndex = context.dataIndex;
+                                const allDatasets = context.chart.data.datasets;
+                                let nodeTotal = 0;
+                                for (let i = 0; i < allDatasets.length; i++) {
+                                    nodeTotal += allDatasets[i].data[nodeIndex] || 0;
+                                }
+                                if (nodeTotal === 0) return "0%";
+                                return `${(value / nodeTotal * 100).toFixed(1)}%`;
+                            },
+                            font: { weight: 'bold' },
+                            color: '#000'
+                        }
+                    },
+                    scales: {
+                        y: { beginAtZero: true }
+                    }
+                },
+                plugins: [ChartDataLabels]
+            });
+        }
         
         window.onload = () => {
-            fetchDashboardData();
-        
-            const source = new EventSource("/stream");
-            source.onmessage = function(event) {
-                if (event.data === "update") {
-                    console.log("New update received from server. Refreshing dashboard.");
-                    fetchDashboardData();
-                }
-            };
+            pollAndUpdate('/dashboard-data', 'dashboard', updateDashboardUI, 15000);
         };
         </script>
     </body>
@@ -866,7 +919,7 @@ def api_history():
 
     with get_db_conn() as conn:
         with conn.cursor() as cur:
-            # Query counts grouped by date and size_range, filter last 7 days
+            # Existing aggregation query
             cur.execute("""
                 SELECT
                     DATE(timestamp AT TIME ZONE 'Africa/Cairo') as day,
@@ -878,7 +931,18 @@ def api_history():
                 ORDER BY day;
             """, (seven_days_ago,))
             rows = cur.fetchall()
+           
+            # New: fetch last_updated from meta or max timestamp
+            cur.execute("SELECT value FROM meta WHERE key='last_update'")
+            row = cur.fetchone()
+            if row:
+                last_updated = row[0]
+            else:
+                cur.execute("SELECT MAX(timestamp) FROM realdata")
+                max_row = cur.fetchone()
+                last_updated = max_row[0].isoformat() if max_row and max_row[0] else None
 
+            
     # Initialize a dict to hold counts per day
     day_data = {}
     for i in range(7):
@@ -937,7 +1001,8 @@ def api_history():
     return jsonify({
         "dates": dates,
         "small": small_percents,
-        "large": large_percents
+        "large": large_percents,
+        "last_updated": last_updated
     })
 
 
