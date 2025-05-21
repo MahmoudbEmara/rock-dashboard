@@ -7,6 +7,8 @@ from dateutil import parser
 from urllib.parse import urlparse
 from collections import defaultdict
 import re
+import hashlib
+import json
 
 app = Flask(__name__)
 
@@ -579,12 +581,12 @@ def dailytrend():
           }
         
           // Check if data changed
+          let previousDataHash = null;
           function isDataChanged(newData) {
-            const newJSON = JSON.stringify(newData);
-            if (newJSON === previousTrendDataJSON) {
+            if (!newData.data_hash || newData.data_hash === previousDataHash) {
               return false;
             }
-            previousTrendDataJSON = newJSON;
+            previousDataHash = newData.data_hash;
             return true;
           }
         
@@ -727,11 +729,21 @@ def api_daily_trend():
             "values": values,
             "color": color_map.get(cat, "#000000")
         })
-
-    return jsonify({
+    
+    # Prepare data payload (excluding timestamp)
+    data_payload = {
         "timestamps": sorted_times,
-        "datasets": datasets,
-        "last_updated": now_precise.isoformat()  # send precise current time
+        "datasets": datasets
+    }
+    
+    # Compute hash
+    data_hash = hashlib.md5(json.dumps(data_payload, sort_keys=True).encode()).hexdigest()
+    
+    # Return final response
+    return jsonify({
+        **data_payload,
+        "last_updated": now_precise.isoformat(),
+        "data_hash": data_hash
     })
 
 # --- Add this route to serve the history chart page ---
