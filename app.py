@@ -7,6 +7,7 @@ from dateutil import parser
 from urllib.parse import urlparse
 from collections import defaultdict
 import queue
+import re
 
 app = Flask(__name__)
 
@@ -884,24 +885,27 @@ def api_history():
         # Determine small or large
         # Assume size_range string contains a number, e.g. "30-50mm", "80-150mm"
         # Extract lower bound or midpoint for classification
-        size = None
-        try:
-            parts = [int(s) for s in size_range.replace("mm", "").replace(" ", "").split("-") if
-                     s.isdigit() or s.lstrip("-").isdigit()]
-            if parts:
-                size = sum(parts) / len(parts)
-        except ValueError as e:
-            # Handle conversion error, optionally log it
-            print(f"ValueError converting size_range '{size_range}': {e}")
-            size = None
+        size_range_clean = size_range.lower().replace(" ", "")
 
-        if size is None:
-            # fallback: treat as large
-            classification = "large"
-        elif size <= 50:
-            classification = "small"
-        else:
-            classification = "large"
+        # Extract all numbers from the string, as a list of ints
+        numbers = [int(num) for num in re.findall(r'\d+', size_range_clean)]
+
+        classification = "large"  # default
+
+        if numbers:
+            # For '>30mm', numbers = [30]
+            # For '30-50mm', numbers = [30, 50]
+            # Logic: if the upper bound or the average is <= 50, classify as small
+
+            # If only one number, like >30, check if it's <= 50
+            if len(numbers) == 1:
+                if numbers[0] <= 50:
+                    classification = "small"
+            else:
+                # multiple numbers (e.g., 30 and 50), take average
+                avg = sum(numbers) / len(numbers)
+                if avg <= 50:
+                    classification = "small"
 
         if day in day_data:
             day_data[day][classification] += total_count
@@ -930,6 +934,7 @@ def api_history():
         "small": small_percents,
         "large": large_percents
     })
+
 
 if __name__ == '__main__':
     init_db()
