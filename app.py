@@ -12,18 +12,19 @@ app = Flask(__name__)
 
 # Config
 EGYPT_TZ = pytz.timezone("Africa/Cairo")
-app.secret_key = os.getenv("FLASK_SECRET_KEY", "replace_this_secret")
-API_KEY = os.getenv("DASHBOARD_API_KEY", "no_key")
-RESET_KEY = os.getenv("RESET_KEY", "no_reset")
-USERNAME = os.getenv("LOGIN_USER", "admin")
-PASSWORD = os.getenv("LOGIN_PASS", "password")
+app.secret_key = os.getenv("FLASK_SECRET_KEY")
+API_KEY = os.getenv("DASHBOARD_API_KEY")
+RESET_KEY = os.getenv("RESET_KEY")
+USERNAME = os.getenv("LOGIN_USER")
+PASSWORD = os.getenv("LOGIN_PASS")
 subscribers = []
 
 # PostgreSQL Connection
 def get_db_conn():
-    db_url = "postgresql://postgres:CfouGVKedJyyJJMMqSocENOlgrBeMdZz@ballast.proxy.rlwy.net:20273/railway"  # Replace with actual or use os.getenv()
+    db_url = os.getenv("DATABASE_URL")
+    if not db_url:
+        raise ValueError("DATABASE_URL not set")
     result = urlparse(db_url)
-
     return psycopg2.connect(
         dbname=result.path[1:],
         user=result.username,
@@ -54,17 +55,6 @@ def init_db():
             ''')
             conn.commit()
 
-@app.route('/clear-db')
-def clear_db():
-    conn = get_db_conn()
-    cur = conn.cursor()  # Create a cursor from the connection
-    cur.execute('TRUNCATE TABLE 20273 RESTART IDENTITY;')
-    conn.commit()
-    cur.close()
-    conn.close()
-    return "Database cleared!"
-
-
 def setup():
     init_db()
 
@@ -78,7 +68,7 @@ def login():
         <title>Limestone Monitoring Beta</title>
         <style>
             body {
-                background: url('https://www.heidelbergmaterials.eg/sites/default/files/2023-09/vlcsnap-2023-09-07-16h41m01s195.jpg') no-repeat center center fixed;
+                background: url('/static/imgs/dashboard.jpg') no-repeat center center fixed;
                 background-size: cover;
                 font-family: Arial, sans-serif;
                 display: flex;
@@ -218,7 +208,7 @@ def dashboard():
         <style>
             /* Background image on body */
             body {
-                background: url('https://www.heidelbergmaterials.eg/sites/default/files/2023-09/vlcsnap-2023-09-07-16h41m01s195.jpg') no-repeat center center fixed;
+                background: url('/static/imgs/dashboard.jpg') no-repeat center center fixed;
                 background-size: cover;
                 font-family: Arial, sans-serif;
                 margin: 20px;
@@ -494,7 +484,7 @@ def dailytrend():
           font-family: Arial, sans-serif;
           padding: 0;
           margin: 0;
-          background: url('https://www.heidelbergmaterials.com/sites/default/files/styles/header_image_large_xl/public/2023-07/zement_new.jpg.webp?itok=D37zx9T9') no-repeat center center fixed;
+          background: url('/static/imgs/dailytrend.jpg') no-repeat center center fixed;
           background-size: cover;
           display: flex;
           justify-content: center;
@@ -734,7 +724,7 @@ def history():
           font-family: Arial, sans-serif;
           padding: 0;
           margin: 0;
-          background: url('https://www.heidelbergmaterials.com/sites/default/files/2024-07/Cement_plant_desert.jpg') no-repeat center center fixed;
+          background: url('/static/imgs/history.jpg') no-repeat center center fixed;
           background-size: cover;
           display: flex;
           justify-content: center;
