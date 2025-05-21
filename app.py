@@ -12,20 +12,18 @@ app = Flask(__name__)
 
 # Config
 EGYPT_TZ = pytz.timezone("Africa/Cairo")
-app.secret_key = os.getenv("FLASK_SECRET_KEY")
-API_KEY = os.getenv("DASHBOARD_API_KEY")
-RESET_KEY = os.getenv("RESET_KEY")
-USERNAME = os.getenv("LOGIN_USER")
-PASSWORD = os.getenv("LOGIN_PASS")
+app.secret_key = os.getenv("FLASK_SECRET_KEY", "replace_this_secret")
+API_KEY = os.getenv("DASHBOARD_API_KEY", "no_key")
+RESET_KEY = os.getenv("RESET_KEY", "no_reset")
+USERNAME = os.getenv("LOGIN_USER", "admin")
+PASSWORD = os.getenv("LOGIN_PASS", "password")
 subscribers = []
 
 # PostgreSQL Connection
 def get_db_conn():
-    db_url = os.getenv("DATABASE_URL")
-    if not db_url:
-        raise ValueError("DATABASE_URL not set")
+    db_url = "postgresql://postgres:CfouGVKedJyyJJMMqSocENOlgrBeMdZz@ballast.proxy.rlwy.net:20273/railway"  # Replace with actual or use os.getenv()
     result = urlparse(db_url)
-    
+
     return psycopg2.connect(
         dbname=result.path[1:],
         user=result.username,
@@ -55,6 +53,17 @@ def init_db():
                 );
             ''')
             conn.commit()
+
+@app.route('/clear-db')
+def clear_db():
+    conn = get_db_conn()
+    cur = conn.cursor()  # Create a cursor from the connection
+    cur.execute('TRUNCATE TABLE 20273 RESTART IDENTITY;')
+    conn.commit()
+    cur.close()
+    conn.close()
+    return "Database cleared!"
+
 
 def setup():
     init_db()
@@ -375,10 +384,18 @@ def dashboard():
                                 anchor: 'end',
                                 align: 'top',
                                 formatter: function (value, context) {
-                                    const dataset = context.dataset.data;
-                                    const total = dataset.reduce((sum, val) => sum + val, 0);
-                                    if (total === 0) return "0%";
-                                    const percent = (value / total * 100).toFixed(1);
+                                    const nodeIndex = context.dataIndex;
+                                    const allDatasets = context.chart.data.datasets;
+                                    
+                                    // Sum all categories' values for the current node
+                                    let nodeTotal = 0;
+                                    for (let i = 0; i < allDatasets.length; i++) {
+                                        nodeTotal += allDatasets[i].data[nodeIndex] || 0;
+                                    }
+                                
+                                    if (nodeTotal === 0) return "0%";
+                                
+                                    const percent = (value / nodeTotal * 100).toFixed(1);
                                     return `${percent}%`;
                                 },
                                 font: { weight: 'bold' },
