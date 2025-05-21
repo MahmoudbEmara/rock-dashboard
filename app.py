@@ -392,6 +392,27 @@ def dashboard():
             }
         
             // Polling function: fetch data every interval ms, then update UI
+            let previousDataJSON = null;  // store stringified data for comparison
+            
+            function isDataChanged(newData) {
+                const newDataJSON = JSON.stringify(newData);
+                if (newDataJSON === previousDataJSON) {
+                    return false; // no change
+                }
+                previousDataJSON = newDataJSON;
+                return true; // changed
+            }
+            
+            function updateDashboardUIIfChanged(data) {
+                if (isDataChanged(data)) {
+                    updateDashboardUI(data);
+                } else {
+                    console.log("No data change detected, skipping UI update.");
+                }
+            }
+            
+            // Then change your pollAndUpdate call to use updateDashboardUIIfChanged
+            
             function pollAndUpdate(url, updateFn, intervalMs) {
                 async function poll() {
                     try {
@@ -405,18 +426,12 @@ def dashboard():
                 }
                 poll();
             }
-        
-            // Reset button handler to manually refresh dashboard
-            function resetDashboard() {
-                fetchDashboardData();
-            }
-        
+             
             window.onload = () => {
-                fetchDashboardData();  // Initial load
-                pollAndUpdate("/dashboard-data", updateDashboardUI, 15000);  // Poll every 15 seconds
+                fetchDashboardData();  // initial load
+                pollAndUpdate("/dashboard-data", updateDashboardUIIfChanged, 15000);
             };
         </script>
-
     </body>
     </html>
     """
