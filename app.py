@@ -273,7 +273,7 @@ def dashboard():
             }
 
             #barChart {
-                max-width: 1100px;
+                max-width: 1200px;
                 max-height: 900px;
                 width: 100%;
                 height: auto;
@@ -342,10 +342,16 @@ def dashboard():
                     const table = document.createElement("table");
         
                     let header = `<tr><th colspan="2">Node: ${node}</th></tr><tr><th>Size Range</th><th>Count</th></tr>`;
+                    let total = 0;
                     let rows = sizeCategories.map(size => {
                         const count = nodeData[size] || 0;
+                        total += count;
                         return `<tr><td>${size}</td><td>${count}</td></tr>`;
                     }).join("");
+                    
+                    // Add total row
+                    rows += `<tr><td><strong>Total</strong> <small>(since 21/May/2025)</small></td><td><strong>${total}</strong></td></tr>`;
+
         
                     table.innerHTML = header + rows;
                     tablesContainer.appendChild(table);
