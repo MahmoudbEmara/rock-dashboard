@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, render_template_string, send_file, redirect, session, url_for, Response
+from flask import Flask, request, jsonify, render_template_string, send_file, redirect, session, url_for, Response, current_app
 from datetime import datetime, timedelta, timezone
 import psycopg2
 import os
@@ -19,6 +19,8 @@ API_KEY = os.getenv("DASHBOARD_API_KEY")
 RESET_KEY = os.getenv("RESET_KEY")
 USERNAME = os.getenv("LOGIN_USER")
 PASSWORD = os.getenv("LOGIN_PASS")
+_last_data_hash = None
+_last_updated_timestamp = None
 subscribers = []
 
 # PostgreSQL Connection
@@ -680,7 +682,7 @@ def dailytrend():
 @app.route('/api/daily-trend')
 def api_daily_trend():
     now_precise = datetime.now(timezone.utc)
-    end_time = datetime.now(timezone.utc)
+    end_time = now_precise
     start_time = end_time - timedelta(hours=24)
 
     categories = ['<30mm', '30-50mm', '50-80mm', '80-150mm', '>150mm']
@@ -706,7 +708,6 @@ def api_daily_trend():
         """, (start_time, end_time))
         rows = cursor.fetchall()
 
-    # Organize data into a dictionary
     minute_bins = {}
     for minute, size_range, total in rows:
         key = minute.replace(tzinfo=timezone.utc).isoformat()
@@ -716,7 +717,6 @@ def api_daily_trend():
 
     sorted_times = sorted(minute_bins.keys())
 
-    # Build dataset per category
     datasets = []
     for cat in categories:
         values = []
@@ -729,22 +729,30 @@ def api_daily_trend():
             "values": values,
             "color": color_map.get(cat, "#000000")
         })
-    
-    # Prepare data payload (excluding timestamp)
+
     data_payload = {
         "timestamps": sorted_times,
         "datasets": datasets
     }
-    
-    # Compute hash
+
     data_hash = hashlib.md5(json.dumps(data_payload, sort_keys=True).encode()).hexdigest()
-    
-    # Return final response
+
+    # Use application context to store persistent values
+    if not hasattr(current_app, 'last_trend_hash'):
+        current_app.last_trend_hash = None
+        current_app.last_trend_updated = now_precise.isoformat()
+
+    # Only update timestamp if data hash changed
+    if data_hash != current_app.last_trend_hash:
+        current_app.last_trend_hash = data_hash
+        current_app.last_trend_updated = now_precise.isoformat()
+
     return jsonify({
         **data_payload,
-        "last_updated": now_precise.isoformat(),
+        "last_updated": current_app.last_trend_updated,
         "data_hash": data_hash
     })
+
 
 # --- Add this route to serve the history chart page ---
 @app.route('/history')
