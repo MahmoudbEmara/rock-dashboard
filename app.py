@@ -287,7 +287,6 @@ def dashboard():
                     <button onclick="resetDashboard()">Reset Dashboard</button>
                     <button onclick="location.href='/history'">History</button>
                     <button onclick="location.href='/dailytrend'">Daily Trend</button>
-                    <button onclick="location.href='/export'">Download CSV</button>
                 </div>
                 <a href="/logout" class="logout-link">Logout</a>
             </div>
